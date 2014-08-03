@@ -1,3 +1,4 @@
+// Public domain.
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -45,15 +47,15 @@ func stats() (rx, tx uint64) {
 	return 0, 0
 }
 
-// humanize converts a number of bytes in KiB or MiB
-func humanize(i uint64) string {
+// humanize converts a number of bytes in KiB or MiB.
+func humanize(i float64) string {
 	if i < 1024 {
-		return fmt.Sprintf("%d bytes", float64(i))
+		return fmt.Sprintf("%.0f bytes", i)
 	}
 	if i < 1024*1024 {
-		return fmt.Sprintf("%.1f KiB", float64(i)/1024)
+		return fmt.Sprintf("%.1f KiB", i/1024)
 	}
-	return fmt.Sprintf("%.1f MiB", float64(i)/1024/1024)
+	return fmt.Sprintf("%.1f MiB", i/1024/1024)
 }
 
 func main() {
@@ -61,8 +63,12 @@ func main() {
 
 	prevRx, prevTx := uint64(0), uint64(0)
 	bio := bufio.NewReader(os.Stdin)
+	prev := time.Now()
 	for {
 		line, err := bio.ReadString('\n')
+		now := time.Now()
+		window := now.Sub(prev).Seconds()
+		prev = now
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -73,7 +79,9 @@ func main() {
 		}
 		line = strings.TrimSuffix(line, "]\n")
 		rx, tx := stats()
-		fmt.Printf("%s,{\"full_text\":\"%10s/s↓ %10s/s↑\"}]\n", line, humanize(rx-prevRx), humanize(tx-prevTx))
+		rxRate := humanize(float64(rx-prevRx) / window)
+		txRate := humanize(float64(tx-prevTx) / window)
+		fmt.Printf("%s,{\"full_text\":\"%10s/s↓ %10s/s↑\"}]\n", line, rxRate, txRate)
 		prevRx, prevTx = rx, tx
 	}
 

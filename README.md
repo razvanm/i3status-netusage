@@ -12,6 +12,5 @@ Sample output:
 
 Know bugs:
 
-  - the time is not yet correctly computed
   - the first data line from i3status will not have the network traffic
   - the traffic is added after the regular i3status.
