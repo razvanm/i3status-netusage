@@ -47,15 +47,19 @@ func stats() (rx, tx uint64) {
 	return 0, 0
 }
 
-// humanize converts a number of bytes in KiB or MiB.
-func humanize(i float64) string {
-	if i < 1024 {
-		return fmt.Sprintf("%.0f bytes", i)
+// format converts a number of bytes in KiB or MiB.
+func format(counter, prevCounter uint64, window float64) string {
+	if prevCounter == 0 {
+		return "bytes"
 	}
-	if i < 1024*1024 {
-		return fmt.Sprintf("%.1f KiB", i/1024)
+	r := float64(counter-prevCounter) / window
+	if r < 1024 {
+		return fmt.Sprintf("%.0f bytes", r)
 	}
-	return fmt.Sprintf("%.1f MiB", i/1024/1024)
+	if r < 1024*1024 {
+		return fmt.Sprintf("%.1f KiB", r/1024)
+	}
+	return fmt.Sprintf("%.1f MiB", r/1024/1024)
 }
 
 func main() {
@@ -66,22 +70,27 @@ func main() {
 	prev := time.Now()
 	for {
 		line, err := bio.ReadString('\n')
+		if err != nil {
+			os.Exit(1)
+		}
 		now := time.Now()
 		window := now.Sub(prev).Seconds()
 		prev = now
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
+
+		prefix := ""
+		if strings.HasPrefix(line, ",[{") {
+			prefix = ","
+			line = line[1:]
 		}
-		if !(strings.HasPrefix(line, ",[{") && strings.HasSuffix(line, "}]\n")) {
-			fmt.Print(line)
+		if !(strings.HasPrefix(line, "[{") && strings.HasSuffix(line, "}]\n")) {
+			fmt.Print(prefix, line)
 			continue
 		}
-		line = strings.TrimSuffix(line, "]\n")
+		line = line[1:]
 		rx, tx := stats()
-		rxRate := humanize(float64(rx-prevRx) / window)
-		txRate := humanize(float64(tx-prevTx) / window)
-		fmt.Printf("%s,{\"full_text\":\"%10s/s↓ %10s/s↑\"}]\n", line, rxRate, txRate)
+		rxRate := format(rx, prevRx, window)
+		txRate := format(tx, prevTx, window)
+		fmt.Printf("%s[{\"full_text\":\"%10s/s↓ %10s/s↑\"},%s", prefix, rxRate, txRate, line)
 		prevRx, prevTx = rx, tx
 	}
 

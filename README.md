@@ -8,9 +8,4 @@ How to add it to the i3wm config:
 
 Sample output:
 
-    19.1 KiB/s↓   21.2 KiB/s↑
-
-Know bugs:
-
-  - the first data line from i3status will not have the network traffic
-  - the traffic is added after the regular i3status.
+    19.1 KiB/s↓   21.2 KiB/s↑|0.22|2014-08-02 22:51:40
